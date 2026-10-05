@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Car Dealer Workflow</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  :root {
+    --ink: #1e293b; --muted: #64748b; --line: #cbd5e1; --accent: #1d4ed8;
+    --blue: #e0ecff; --blue-s: #3b6fd8; --amber: #fff1d6; --amber-s: #d99a1e;
+    --green: #ddf4e4; --green-s: #2e9d5b; --gray: #f1f5f9;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Leelawadee UI", "Tahoma", sans-serif; color: var(--ink); background: #fff;
+         font-size: 10.5pt; line-height: 1.55; margin: 0; }
+  h1 { font-size: 22pt; margin: 0 0 4px; color: var(--accent); }
+  h2 { font-size: 14pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 11.5pt; margin: 14px 0 4px; }
+  p { margin: 4px 0 8px; }
+  .sub { color: var(--muted); margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.5pt; }
+  th, td { border: 1px solid var(--line); padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: var(--gray); }
+  code { font-family: Consolas, monospace; font-size: 9pt; background: var(--gray); padding: 0 3px; border-radius: 3px; }
+  ul { margin: 4px 0 8px; padding-left: 20px; }
+  li { margin: 2px 0; }
+  figure { margin: 8px 0 14px; break-inside: avoid; }
+  figcaption { font-size: 9pt; color: var(--muted); text-align: center; margin-top: 4px; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: "Leelawadee UI", "Tahoma", sans-serif; }
+  .formula { background: var(--gray); border-left: 4px solid var(--accent); padding: 8px 12px; font-family: Consolas, "Leelawadee UI", monospace; font-size: 9.5pt; white-space: pre; }
+  .pb { break-before: page; }
+  .avoid { break-inside: avoid; }
+  .toc { columns: 2; font-size: 10pt; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+</svg>
+
+<h1>ระบบจัดการการขายรถมือสอง</h1>
+<div class="sub">Dealer Management System (DMS): Workflow, Diagram และโครงสร้างระบบ · ฉบับร่าง 5 ต.ค. 2026 · โปรเจกต์ car-finace</div>
+
+<p>เอกสารนี้สรุป workflow ของระบบจัดการเต็นท์รถมือสอง อิงจากแนวปฏิบัติของ DMS สากล
+แล้วปรับให้เข้ากับขั้นตอนในไทย (ไฟแนนซ์เช่าซื้อ, การโอนกรรมสิทธิ์ที่กรมการขนส่งทางบก)
+หัวใจของระบบคือ <b>รถ 1 คันคือ 1 record</b> ที่เดินผ่านสถานะต่างๆ และ<b>สะสมต้นทุนทุกบาท</b>ไว้ที่ตัวรถ
+เพื่อให้รู้กำไรจริงของรถแต่ละคัน</p>
+
+<div class="toc">
+  <div>1. Lifecycle ของรถ</div>
+  <div>2. สถานะรถ (State Machine)</div>
+  <div>3. รายละเอียดแต่ละขั้น</div>
+  <div>4. งานซ่อม / ใบสั่งซ่อม</div>
+  <div>5. ต้นทุนและกำไรต่อคัน</div>
+  <div>6. การขายและไฟแนนซ์ (Swimlane)</div>
+  <div>7. โมดูลและบทบาทผู้ใช้</div>
+  <div>8. Data Model (ER Diagram)</div>
+  <div>9. สถาปัตยกรรมระบบ</div>
+  <div>10. แผนพัฒนาเป็นเฟส</div>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2>1. Lifecycle ของรถ 1 คัน</h2>
+<figure>
+<svg viewBox="0 0 690 350" xmlns="http://www.w3.org/2000/svg">
+  <g font-size="12" text-anchor="middle">
+    <!-- row 1 -->
+    <rect x="20" y="40" width="140" height="56" rx="8" fill="#e0ecff" stroke="#3b6fd8"/>
+    <text x="90" y="64" font-weight="700">1. รับซื้อ / ประเมิน</text><text x="90" y="83" font-size="10" fill="#475569">Acquisition</text>
+    <rect x="190" y="40" width="140" height="56" rx="8" fill="#e0ecff" stroke="#3b6fd8"/>
+    <text x="260" y="64" font-weight="700">2. รับเข้าสต็อก</text><text x="260" y="83" font-size="10" fill="#475569">Stock-in</text>
+    <rect x="360" y="40" width="140" height="56" rx="8" fill="#e0ecff" stroke="#3b6fd8"/>
+    <text x="430" y="64" font-weight="700">3. ตรวจสภาพ</text><text x="430" y="83" font-size="10" fill="#475569">Inspection</text>
+    <rect x="530" y="40" width="140" height="56" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="600" y="64" font-weight="700">4. ซ่อม / เตรียมรถ</text><text x="600" y="83" font-size="10" fill="#475569">Reconditioning</text>
+    <!-- row 2 -->
+    <rect x="530" y="160" width="140" height="56" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="600" y="184" font-weight="700">5. ตั้งราคา</text><text x="600" y="203" font-size="10" fill="#475569">Costing &amp; Pricing</text>
+    <rect x="360" y="160" width="140" height="56" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="430" y="184" font-weight="700">6. ลงประกาศขาย</text><text x="430" y="203" font-size="10" fill="#475569">Merchandising</text>
+    <rect x="190" y="160" width="140" height="56" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="260" y="184" font-weight="700">7. จอง / มัดจำ</text><text x="260" y="203" font-size="10" fill="#475569">Lead &amp; Booking</text>
+    <rect x="20" y="160" width="140" height="56" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="90" y="184" font-weight="700">8. สัญญา / ไฟแนนซ์</text><text x="90" y="203" font-size="10" fill="#475569">Deal &amp; F&amp;I</text>
+    <!-- row 3 -->
+    <rect x="20" y="280" width="140" height="56" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="90" y="304" font-weight="700">9. ส่งมอบรถ</text><text x="90" y="323" font-size="10" fill="#475569">Delivery</text>
+    <rect x="190" y="280" width="140" height="56" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="260" y="304" font-weight="700">10. โอนกรรมสิทธิ์</text><text x="260" y="323" font-size="10" fill="#475569">Title Transfer</text>
+    <rect x="360" y="280" width="140" height="56" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="430" y="304" font-weight="700">11. หลังการขาย</text><text x="430" y="323" font-size="10" fill="#475569">After-sales</text>
+  </g>
+  <g stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#arr)">
+    <line x1="160" y1="68" x2="188" y2="68"/><line x1="330" y1="68" x2="358" y2="68"/><line x1="500" y1="68" x2="528" y2="68"/>
+    <line x1="600" y1="96" x2="600" y2="158"/>
+    <line x1="530" y1="188" x2="502" y2="188"/><line x1="360" y1="188" x2="332" y2="188"/><line x1="190" y1="188" x2="162" y2="188"/>
+    <line x1="90" y1="216" x2="90" y2="278"/>
+    <line x1="160" y1="308" x2="188" y2="308"/><line x1="330" y1="308" x2="358" y2="308"/>
+  </g>
+  <!-- legend -->
+  <g font-size="10.5">
+    <rect x="530" y="270" width="16" height="12" fill="#e0ecff" stroke="#3b6fd8"/><text x="552" y="280">จัดหารถ (Acquire)</text>
+    <rect x="530" y="292" width="16" height="12" fill="#fff1d6" stroke="#d99a1e"/><text x="552" y="302">เตรียมขาย (Prepare)</text>
+    <rect x="530" y="314" width="16" height="12" fill="#ddf4e4" stroke="#2e9d5b"/><text x="552" y="324">ขายและส่งมอบ (Sell)</text>
+  </g>
+</svg>
+<figcaption>รูปที่ 1: 11 ขั้นตอนตั้งแต่รับรถเข้าจนปิดการขาย แบ่งเป็น 3 ช่วง</figcaption>
+</figure>
+
+<!-- ============ 2 ============ -->
+<h2>2. สถานะรถ (Vehicle Status State Machine)</h2>
+<figure>
+<svg viewBox="0 0 690 365" xmlns="http://www.w3.org/2000/svg">
+  <g text-anchor="middle">
+    <g fill="#e0ecff" stroke="#3b6fd8">
+      <rect x="5" y="30" width="118" height="50" rx="6"/><rect x="143" y="30" width="118" height="50" rx="6"/>
+      <rect x="281" y="30" width="118" height="50" rx="6"/><rect x="419" y="30" width="118" height="50" rx="6"/>
+    </g>
+    <rect x="557" y="30" width="118" height="50" rx="6" fill="#fff1d6" stroke="#d99a1e"/>
+    <rect x="557" y="170" width="118" height="50" rx="6" fill="#fff1d6" stroke="#d99a1e"/>
+    <g fill="#ddf4e4" stroke="#2e9d5b">
+      <rect x="419" y="170" width="118" height="50" rx="6"/><rect x="281" y="170" width="118" height="50" rx="6"/>
+      <rect x="143" y="170" width="118" height="50" rx="6"/><rect x="5" y="170" width="118" height="50" rx="6"/>
+    </g>
+    <rect x="5" y="300" width="118" height="50" rx="6" fill="#2e9d5b" stroke="#1f7a43"/>
+    <g font-size="10.5" font-weight="700">
+      <text x="64" y="52">APPRAISAL</text><text x="202" y="52">PURCHASED</text><text x="340" y="52">IN_STOCK</text>
+      <text x="478" y="52">INSPECTION</text><text x="616" y="52">RECONDITIONING</text>
+      <text x="616" y="192">READY_FOR_SALE</text><text x="478" y="192">RESERVED</text><text x="340" y="192">FINANCE_PENDING</text>
+      <text x="202" y="192">SOLD</text><text x="64" y="192">DELIVERED</text>
+      <text x="64" y="322" fill="#fff">TRANSFERRED</text>
+    </g>
+    <g font-size="10" fill="#475569">
+      <text x="64" y="70">ประเมินราคา</text><text x="202" y="70">ซื้อแล้ว</text><text x="340" y="70">รถเข้าลาน</text>
+      <text x="478" y="70">ตรวจสภาพ</text><text x="616" y="70">ซ่อม / เตรียมรถ</text>
+      <text x="616" y="210">พร้อมขาย</text><text x="478" y="210">จอง / มัดจำ</text><text x="340" y="210">รอไฟแนนซ์อนุมัติ</text>
+      <text x="202" y="210">ขายแล้ว รอส่งมอบ</text><text x="64" y="210">ส่งมอบแล้ว</text>
+      <text x="64" y="340" fill="#e8fff0">โอนเล่มเสร็จ (ปิดงาน)</text>
+    </g>
+  </g>
+  <g stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#arr)">
+    <line x1="123" y1="55" x2="141" y2="55"/><line x1="261" y1="55" x2="279" y2="55"/>
+    <line x1="399" y1="55" x2="417" y2="55"/><line x1="537" y1="55" x2="555" y2="55"/>
+    <line x1="616" y1="80" x2="616" y2="168"/>
+    <line x1="557" y1="195" x2="539" y2="195"/><line x1="419" y1="195" x2="401" y2="195"/>
+    <line x1="281" y1="195" x2="263" y2="195"/><line x1="143" y1="195" x2="125" y2="195"/>
+    <line x1="64" y1="220" x2="64" y2="298"/>
+  </g>
+  <g stroke="#b45309" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#arrd)">
+    <line x1="478" y1="80" x2="588" y2="168"/>
+    <path d="M470,170 Q340,110 204,168"/>
+    <path d="M340,220 C340,268 616,268 616,222"/>
+  </g>
+  <g font-size="10" fill="#b45309">
+    <text x="530" y="112">ไม่ต้องซ่อม</text>
+    <text x="337" y="134" text-anchor="middle">เงินสด (ข้ามไฟแนนซ์)</text>
+    <text x="478" y="282" text-anchor="middle">ไฟแนนซ์ไม่อนุมัติ / ยกเลิกจอง → กลับมาขาย</text>
+  </g>
+  <rect x="150" y="300" width="525" height="50" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4 3"/>
+  <g font-size="10.5">
+    <text x="162" y="320"><tspan font-weight="700">CANCELLED</tspan>: ยกเลิกได้ทุกสถานะก่อน SOLD (เช่น ดีลรับซื้อไม่สำเร็จ)</text>
+    <text x="162" y="339"><tspan font-weight="700">RETURNED</tspan>: ลูกค้าคืนรถหลังส่งมอบ → กลับเข้า IN_STOCK แล้วตรวจสภาพใหม่</text>
+  </g>
+</svg>
+<figcaption>รูปที่ 2: เส้นทึบคือเส้นทางหลัก เส้นประคือเส้นทางทางเลือก ทุกครั้งที่เปลี่ยนสถานะ ให้เก็บ log ว่าใคร เมื่อไร และเปลี่ยนจากไหนไปไหน</figcaption>
+</figure>
+
+<div class="avoid">
+<table>
+  <tr><th style="width:22%">สถานะ</th><th>ความหมาย</th><th style="width:30%">ใครเป็นคนเปลี่ยน</th></tr>
+  <tr><td><code>APPRAISAL</code></td><td>อยู่ระหว่างประเมินราคารับซื้อ ยังไม่ได้ซื้อ</td><td>ฝ่ายจัดซื้อ</td></tr>
+  <tr><td><code>PURCHASED</code></td><td>ซื้อแล้ว รอรถเข้าลาน</td><td>ฝ่ายจัดซื้อ</td></tr>
+  <tr><td><code>IN_STOCK</code></td><td>รถเข้าลานแล้ว ได้ Stock No.</td><td>ฝ่ายจัดซื้อ / ลานรถ</td></tr>
+  <tr><td><code>INSPECTION</code></td><td>กำลังตรวจสภาพตาม checklist</td><td>ช่าง</td></tr>
+  <tr><td><code>RECONDITIONING</code></td><td>อยู่ระหว่างซ่อมหรือเตรียมรถ (มีใบสั่งซ่อมเปิดอยู่)</td><td>ช่าง / ระบบ (อัตโนมัติ)</td></tr>
+  <tr><td><code>READY_FOR_SALE</code></td><td>พร้อมขาย แสดงบนหน้าเว็บได้</td><td>ผู้จัดการ (หลังตั้งราคาแล้ว)</td></tr>
+  <tr><td><code>RESERVED</code></td><td>ลูกค้าวางมัดจำแล้ว ซ่อนรถจากหน้าขาย</td><td>ระบบ (เมื่อออกใบรับมัดจำ)</td></tr>
+  <tr><td><code>FINANCE_PENDING</code></td><td>ยื่นไฟแนนซ์แล้ว รอผลอนุมัติ</td><td>เซลล์</td></tr>
+  <tr><td><code>SOLD</code></td><td>ชำระเงินครบหรือไฟแนนซ์อนุมัติแล้ว รอส่งมอบ</td><td>การเงิน</td></tr>
+  <tr><td><code>DELIVERED</code></td><td>ส่งมอบรถให้ลูกค้าแล้ว</td><td>เซลล์</td></tr>
+  <tr><td><code>TRANSFERRED</code></td><td>โอนเล่มที่ขนส่งเสร็จแล้ว ปิดงาน</td><td>การเงิน / เอกสาร</td></tr>
+</table>
+</div>
+
+<!-- ============ 3 ============ -->
+<h2 class="pb">3. รายละเอียดแต่ละขั้น</h2>
+
+<h3>① รับซื้อ / ประเมินราคา (Acquisition &amp; Appraisal)</h3>
+<ul>
+  <li><b>แหล่งที่มาของรถ:</b> ซื้อจากลูกค้า, รถเทิร์น (Trade-in), ลานประมูล, รถยึดจากไฟแนนซ์, ดีลเลอร์อื่น</li>
+  <li><b>ข้อมูลรถ:</b> เลขตัวถัง (VIN), เลขเครื่อง, ทะเบียน, ยี่ห้อ/รุ่น/ปี/สี, เลขไมล์, เกียร์, เชื้อเพลิง</li>
+  <li><b>ราคา:</b> ราคาที่ประเมิน และราคาที่ตกลงซื้อ</li>
+  <li><b>เอกสาร:</b> เล่มทะเบียน, สำเนาบัตรผู้ขาย, สัญญาซื้อขาย, ภาระไฟแนนซ์ที่ยังค้าง (ถ้ามี)</li>
+  <li>ระบบออก <b>Stock No.</b> ให้รถทุกคัน เช่น <code>STK-2026-0001</code></li>
+</ul>
+
+<h3>② ตรวจสภาพ (Inspection)</h3>
+<ul>
+  <li>Checklist มาตรฐานประมาณ 100–150 จุด แบ่งหมวดเป็นเครื่องยนต์, ช่วงล่าง, ไฟฟ้า, ตัวถัง, ภายใน</li>
+  <li>ถ่ายรูปรอบคัน และรูปจุดเสียหายแต่ละจุด</li>
+  <li>จุดที่ไม่ผ่านจะกลายเป็น<b>รายการที่ต้องซ่อม</b> แล้วระบบใช้รายการนี้สร้างใบสั่งซ่อมฉบับร่าง</li>
+</ul>
+
+<h3>③ ซ่อม / เตรียมรถ (Reconditioning)</h3>
+<p>ใช้ระบบใบสั่งซ่อม (Work Order) ดูรายละเอียดในหัวข้อ 4</p>
+
+<h3>④ ตั้งราคา (Costing &amp; Pricing)</h3>
+<ul>
+  <li>ระบบรวมต้นทุนทั้งหมดของรถคันนั้นให้อัตโนมัติ ดูหัวข้อ 5</li>
+  <li>แนะนำราคาขายจากต้นทุนรวมบวก margin ที่ตั้งไว้ และกำหนด <b>ราคาขายขั้นต่ำ</b>ที่เซลล์ห้ามลดต่ำกว่านี้</li>
+  <li>แสดง <b>อายุสต็อก (Days in Stock)</b> เพราะยิ่งรถค้างนาน ต้นทุนแฝงก็ยิ่งเพิ่ม</li>
+</ul>
+
+<h3>⑤ ลงขาย (Merchandising)</h3>
+<ul>
+  <li>อัปโหลดรูป เขียนรายละเอียด และติดป้าย เช่น "รถบ้าน", "ไมล์น้อย", "ฟรีดาวน์"</li>
+  <li>เลือกได้ว่าจะแสดงบนหน้าเว็บโชว์รถสาธารณะหรือไม่ และ export ข้อมูลไปลงเว็บประกาศขายรถ</li>
+</ul>
+
+<h3>⑥ ขาย (Sales &amp; Lead)</h3>
+<ul>
+  <li><b>Lead:</b> ลูกค้าที่สนใจ มาจากช่องทางไหน (Facebook, LINE, Walk-in) และสนใจรถคันไหน</li>
+  <li>บันทึกการทดลองขับ: วันที่ และสำเนาใบขับขี่</li>
+  <li><b>ใบเสนอราคา</b> → <b>ใบจอง/รับมัดจำ</b> แล้วรถเปลี่ยนเป็น <code>RESERVED</code> อัตโนมัติ</li>
+</ul>
+
+<h3>⑦ ทำดีล / ไฟแนนซ์ (Deal &amp; F&amp;I)</h3>
+<ul>
+  <li><b>รูปแบบการชำระ:</b> เงินสด หรือไฟแนนซ์ (เช่าซื้อ)</li>
+  <li><b>ข้อมูลไฟแนนซ์:</b> บริษัทไฟแนนซ์, ยอดจัด, เงินดาวน์, ดอกเบี้ย, จำนวนงวด, ค่างวด</li>
+  <li><b>สถานะไฟแนนซ์:</b> <code>SUBMITTED → APPROVED / REJECTED → DISBURSED</code> (ไฟแนนซ์โอนเงินให้แล้ว)</li>
+  <li><b>ส่วนเสริม:</b> ประกันภัย, พ.ร.บ., รับประกันเครื่องยนต์/เกียร์, ของแถม</li>
+  <li><b>ค่าคอมมิชชั่น:</b> ของเซลล์ และ commission ที่ได้รับจากไฟแนนซ์</li>
+</ul>
+
+<h3>⑧ ส่งมอบและโอนกรรมสิทธิ์</h3>
+<ul>
+  <li>Checklist ส่งมอบ: กุญแจ 2 ดอก, คู่มือ, ป้ายแดง/ป้ายทะเบียน, ลายเซ็นลูกค้า</li>
+  <li>ติดตามการโอนเล่มที่ขนส่ง: <code>รอเอกสาร → ยื่นโอน → โอนเสร็จ</code></li>
+</ul>
+
+<h3>⑨ หลังการขาย</h3>
+<ul>
+  <li>ติดตามการเคลมตามประกัน, นัดเช็กระยะ, ทำ survey ความพึงพอใจของลูกค้า</li>
+</ul>
+
+<!-- ============ 4 ============ -->
+<h2 class="pb">4. งานซ่อม / ใบสั่งซ่อม (Work Order Flow)</h2>
+<figure>
+<svg viewBox="0 0 690 360" xmlns="http://www.w3.org/2000/svg">
+  <g text-anchor="middle" font-size="11.5">
+    <rect x="10" y="30" width="120" height="56" rx="8" fill="#e0ecff" stroke="#3b6fd8"/>
+    <text x="70" y="54" font-weight="700">ผลตรวจสภาพ</text><text x="70" y="72" font-size="10" fill="#475569">จุดที่ไม่ผ่าน</text>
+    <rect x="160" y="30" width="130" height="56" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="225" y="54" font-weight="700">สร้างใบสั่งซ่อม</text><text x="225" y="72" font-size="10" fill="#475569">DRAFT · ประเมินงบ</text>
+    <polygon points="375,18 435,58 375,98 315,58" fill="#fef9c3" stroke="#ca8a04"/>
+    <text x="375" y="55" font-size="10.5" font-weight="700">งบเกิน</text><text x="375" y="70" font-size="10.5" font-weight="700">วงเงิน?</text>
+    <rect x="500" y="30" width="170" height="56" rx="8" fill="#fde2e2" stroke="#dc2626"/>
+    <text x="585" y="54" font-weight="700">ผู้จัดการอนุมัติ</text><text x="585" y="72" font-size="10" fill="#475569">เช่น งบเกิน 20,000 บาท</text>
+
+    <rect x="500" y="170" width="170" height="60" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="585" y="195" font-weight="700">APPROVED</text><text x="585" y="214" font-size="10" fill="#475569">ส่งงานให้ช่าง / อู่นอก</text>
+    <rect x="255" y="170" width="200" height="60" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="355" y="192" font-weight="700">IN_PROGRESS</text>
+    <text x="355" y="208" font-size="10" fill="#475569">บันทึกค่าแรง · เบิกอะไหล่</text>
+    <text x="355" y="222" font-size="10" fill="#475569">งานนอก (ทำสี, เคลือบ, ฟิล์ม)</text>
+    <rect x="10" y="170" width="200" height="60" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="110" y="195" font-weight="700">DONE</text><text x="110" y="214" font-size="10" fill="#475569">ตรวจรับงาน · รูปก่อนและหลังซ่อม</text>
+
+    <rect x="10" y="290" width="260" height="56" rx="8" fill="#e2e8f0" stroke="#475569"/>
+    <text x="140" y="314" font-weight="700">ลงต้นทุนเข้ารถ</text><text x="140" y="332" font-size="10" fill="#475569">ค่าใช้จ่ายจริงไปบวกใน total_cost</text>
+    <rect x="320" y="290" width="200" height="56" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="420" y="314" font-weight="700">ไปขั้นตั้งราคา</text><text x="420" y="332" font-size="10" fill="#475569">→ READY_FOR_SALE</text>
+  </g>
+  <g stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#arr)">
+    <line x1="130" y1="58" x2="158" y2="58"/>
+    <line x1="290" y1="58" x2="313" y2="58"/>
+    <line x1="435" y1="58" x2="498" y2="58"/>
+    <path d="M375,98 V130 H560 V168"/>
+    <line x1="630" y1="86" x2="630" y2="168"/>
+    <line x1="500" y1="200" x2="457" y2="200"/>
+    <line x1="255" y1="200" x2="212" y2="200"/>
+    <line x1="110" y1="230" x2="110" y2="288"/>
+    <line x1="270" y1="318" x2="318" y2="318"/>
+  </g>
+  <g stroke="#b45309" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#arrd)">
+    <path d="M355,170 V145 H250 V88"/>
+  </g>
+  <g font-size="10.5">
+    <text x="466" y="52" text-anchor="middle" fill="#dc2626">ใช่</text>
+    <text x="470" y="124" text-anchor="middle" fill="#2e9d5b">ไม่</text>
+    <text x="246" y="140" text-anchor="end" fill="#b45309">เจองานเพิ่ม → ขออนุมัติใหม่</text>
+  </g>
+</svg>
+<figcaption>รูปที่ 3: ใบสั่งซ่อม 1 ใบผูกกับรถ 1 คัน ส่วนรถ 1 คันมีใบสั่งซ่อมได้หลายใบ</figcaption>
+</figure>
+
+<div class="avoid">
+<table>
+  <tr><th style="width:20%">ประเภทรายการ</th><th>ตัวอย่าง</th><th style="width:38%">ข้อมูลที่เก็บ</th></tr>
+  <tr><td>ค่าแรง (Labor)</td><td>เปลี่ยนผ้าเบรก, ตั้งศูนย์</td><td>ชั่วโมง × อัตราค่าแรง, ช่างผู้ทำ</td></tr>
+  <tr><td>อะไหล่ (Parts)</td><td>ผ้าเบรก, ยางรถ, แบตเตอรี่</td><td>รหัส, ชื่อ, จำนวน, ราคาต่อหน่วย, ร้านค้า</td></tr>
+  <tr><td>งานนอก (Sublet)</td><td>ทำสี, เคลือบแก้ว, ติดฟิล์ม, ล้างอัดฉีด</td><td>อู่/ร้าน, ราคาตามใบเสร็จ, ไฟล์ใบเสร็จ</td></tr>
+</table>
+<p>ใบสั่งซ่อมแต่ละใบเก็บ <b>งบที่อนุมัติ</b> เทียบกับ <b>ค่าใช้จ่ายจริง</b> เพื่อใช้ทำรายงาน "ซ่อมเกินงบ"</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2>5. ต้นทุนและกำไรต่อคัน (Cost Basis &amp; Gross Profit)</h2>
+<figure>
+<svg viewBox="0 0 690 250" xmlns="http://www.w3.org/2000/svg">
+  <g text-anchor="middle">
+    <g fill="#e0ecff" stroke="#3b6fd8">
+      <rect x="9" y="20" width="120" height="64" rx="8"/><rect x="147" y="20" width="120" height="64" rx="8"/>
+      <rect x="285" y="20" width="120" height="64" rx="8"/><rect x="423" y="20" width="120" height="64" rx="8"/>
+      <rect x="561" y="20" width="120" height="64" rx="8"/>
+    </g>
+    <g font-size="11.5" font-weight="700">
+      <text x="69" y="45">ราคาซื้อ</text><text x="207" y="45">ซ่อม / อะไหล่</text><text x="345" y="45">เตรียมรถ</text>
+      <text x="483" y="45" font-size="10">ขนส่ง / ค่าธรรมเนียม</text><text x="621" y="45" font-size="10.5">อื่นๆ / ดอกเบี้ย</text>
+    </g>
+    <g font-size="12" fill="#1d4ed8">
+      <text x="69" y="70">350,000</text><text x="207" y="70">28,000</text><text x="345" y="70">6,000</text>
+      <text x="483" y="70">4,500</text><text x="621" y="70">3,500</text>
+    </g>
+    <g font-size="18" font-weight="700" fill="#475569">
+      <text x="138" y="58">+</text><text x="276" y="58">+</text><text x="414" y="58">+</text><text x="552" y="58">+</text>
+    </g>
+    <rect x="9" y="140" width="190" height="70" rx="8" fill="#e2e8f0" stroke="#475569"/>
+    <text x="104" y="167" font-size="12" font-weight="700">ต้นทุนรวม</text>
+    <text x="104" y="192" font-size="15" font-weight="700">392,000</text>
+    <rect x="250" y="140" width="190" height="70" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="345" y="167" font-size="12" font-weight="700">ราคาขาย</text>
+    <text x="345" y="192" font-size="15" font-weight="700">439,000</text>
+    <rect x="491" y="140" width="190" height="70" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="586" y="167" font-size="12" font-weight="700">กำไรขั้นต้น</text>
+    <text x="586" y="192" font-size="15" font-weight="700" fill="#1f7a43">47,000 (10.7%)</text>
+    <g font-size="20" font-weight="700" fill="#475569">
+      <text x="225" y="182">−</text><text x="466" y="182">=</text>
+    </g>
+  </g>
+  <path d="M345,84 V108 H104 V138" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+  <g stroke="#94a3b8" stroke-width="1.2" fill="none"><path d="M69,84 V108 M207,84 V108 M483,84 V108 M621,84 V108 M69,108 H621"/></g>
+  <text x="345" y="236" text-anchor="middle" font-size="10" fill="#64748b">ตัวอย่างตัวเลข (บาท) · ดอกเบี้ย = ดอกเบี้ย floor plan กรณีกู้เงินมาซื้อรถเข้าสต็อก</text>
+</svg>
+<figcaption>รูปที่ 4: ทุกค่าใช้จ่ายต้องผูกกับรถคันใดคันหนึ่ง ระบบจึงคำนวณกำไรต่อคันให้ได้อัตโนมัติ</figcaption>
+</figure>
+<div class="formula">ต้นทุนรวม (total_cost) = ราคาซื้อ + Σ ใบสั่งซ่อม (ค่าแรง + อะไหล่ + งานนอก) + Σ ค่าใช้จ่ายอื่น
+กำไรขั้นต้น          = ราคาขายจริง − ต้นทุนรวม
+กำไรสุทธิต่อคัน (เสริม) = กำไรขั้นต้น + commission ไฟแนนซ์/ประกัน − ค่าคอมเซลล์</div>
+
+<!-- ============ 6 ============ -->
+<h2 class="pb">6. การขายและไฟแนนซ์ (Swimlane)</h2>
+<figure>
+<svg viewBox="0 0 680 535" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <rect x="0" y="0" width="136" height="535" fill="#f8fafc"/><rect x="136" y="0" width="136" height="535" fill="#ffffff"/>
+    <rect x="272" y="0" width="136" height="535" fill="#f8fafc"/><rect x="408" y="0" width="136" height="535" fill="#ffffff"/>
+    <rect x="544" y="0" width="136" height="535" fill="#f8fafc"/>
+    <g stroke="#cbd5e1"><line x1="136" y1="0" x2="136" y2="535"/><line x1="272" y1="0" x2="272" y2="535"/>
+      <line x1="408" y1="0" x2="408" y2="535"/><line x1="544" y1="0" x2="544" y2="535"/></g>
+    <rect x="0" y="0" width="680" height="32" fill="#1d4ed8"/>
+    <g fill="#fff" font-size="11.5" font-weight="700" text-anchor="middle">
+      <text x="68" y="21">ลูกค้า</text><text x="204" y="21">เซลล์</text><text x="340" y="21">การเงิน / บัญชี</text>
+      <text x="476" y="21">บริษัทไฟแนนซ์</text><text x="612" y="21">ขนส่ง</text>
+    </g>
+  </g>
+  <g fill="#fff" stroke="#3b6fd8" stroke-width="1.2">
+    <rect x="8" y="50" width="120" height="34" rx="6"/>
+    <rect x="144" y="98" width="120" height="34" rx="6"/>
+    <rect x="8" y="146" width="120" height="34" rx="6"/>
+    <rect x="280" y="194" width="120" height="34" rx="6"/>
+    <rect x="144" y="242" width="120" height="34" rx="6"/>
+    <rect x="416" y="290" width="120" height="34" rx="6" fill="#fef9c3" stroke="#ca8a04"/>
+    <rect x="280" y="338" width="120" height="34" rx="6"/>
+    <rect x="416" y="386" width="120" height="34" rx="6"/>
+    <rect x="144" y="434" width="120" height="34" rx="6" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <rect x="552" y="482" width="120" height="34" rx="6" fill="#ddf4e4" stroke="#2e9d5b"/>
+  </g>
+  <g font-size="10.5" text-anchor="middle">
+    <text x="68" y="71">1. สนใจ / ทดลองขับ</text>
+    <text x="204" y="112">2. บันทึก Lead</text><text x="204" y="126" font-size="9.5" fill="#475569">ออกใบเสนอราคา</text>
+    <text x="68" y="167">3. วางเงินมัดจำ</text>
+    <text x="340" y="208">4. ออกใบรับมัดจำ</text><text x="340" y="222" font-size="9.5" fill="#475569">รถ → RESERVED</text>
+    <text x="204" y="256">5. ยื่นขอสินเชื่อ</text><text x="204" y="270" font-size="9.5" fill="#475569">รถ → FINANCE_PENDING</text>
+    <text x="476" y="304">6. พิจารณาอนุมัติ</text><text x="476" y="318" font-size="9.5" fill="#475569">ยอดจัด · งวด · ดอกเบี้ย</text>
+    <text x="340" y="352">7. รับดาวน์ · ทำสัญญา</text><text x="340" y="366" font-size="9.5" fill="#475569">รถ → SOLD</text>
+    <text x="476" y="400">8. โอนยอดจัดให้เต็นท์</text><text x="476" y="414" font-size="9.5" fill="#475569">DISBURSED</text>
+    <text x="204" y="448">9. ส่งมอบรถ</text><text x="204" y="462" font-size="9.5" fill="#475569">รถ → DELIVERED</text>
+    <text x="612" y="496">10. โอนกรรมสิทธิ์</text><text x="612" y="510" font-size="9.5" fill="#475569">รถ → TRANSFERRED</text>
+  </g>
+  <g stroke="#475569" stroke-width="1.4" fill="none" marker-end="url(#arr)">
+    <path d="M68,84 V91 H204 V97"/>
+    <path d="M204,132 V139 H68 V145"/>
+    <path d="M68,180 V187 H340 V193"/>
+    <path d="M340,228 V235 H204 V241"/>
+    <path d="M204,276 V283 H476 V289"/>
+    <path d="M476,324 V331 H340 V337"/>
+    <path d="M340,372 V379 H476 V385"/>
+    <path d="M476,420 V427 H204 V433"/>
+    <path d="M204,468 V475 H612 V481"/>
+  </g>
+</svg>
+<figcaption>รูปที่ 5: ลำดับงานตั้งแต่ลูกค้าสนใจจนโอนเล่ม แยกตามผู้รับผิดชอบ · กรณีซื้อเงินสดจะข้ามขั้น 5, 6, 8 · ถ้าไฟแนนซ์ไม่อนุมัติ ให้ลองยื่นไฟแนนซ์เจ้าอื่น หรือคืนมัดจำแล้วรถกลับเป็น READY_FOR_SALE</figcaption>
+</figure>
+
+<!-- ============ 7 ============ -->
+<h2 class="pb">7. โมดูลและบทบาทผู้ใช้</h2>
+<table>
+  <tr><th style="width:22%">โมดูล</th><th>หน้าที่</th></tr>
+  <tr><td><b>Dashboard</b></td><td>รถในสต็อก, รถที่รอซ่อม, ยอดขายเดือนนี้, กำไร, รถที่ค้างสต็อกนาน</td></tr>
+  <tr><td><b>Inventory</b></td><td>ทะเบียนรถทั้งหมด กรองตามสถานะได้ หน้ารายละเอียดรถมี timeline ของทุกเหตุการณ์</td></tr>
+  <tr><td><b>Purchase</b></td><td>การรับซื้อและประเมินราคา</td></tr>
+  <tr><td><b>Inspection</b></td><td>Checklist ตรวจสภาพ และรูปถ่าย</td></tr>
+  <tr><td><b>Workshop / Recon</b></td><td>ใบสั่งซ่อม, ค่าแรง, อะไหล่, งานนอก, การอนุมัติงบ</td></tr>
+  <tr><td><b>Parts &amp; Vendors</b></td><td>ทะเบียนอะไหล่, ร้านค้า/อู่, ประวัติราคา</td></tr>
+  <tr><td><b>Expenses</b></td><td>ค่าใช้จ่ายอื่นที่ผูกกับรถแต่ละคัน</td></tr>
+  <tr><td><b>CRM / Leads</b></td><td>ลูกค้า, ผู้ที่สนใจ, ประวัติการติดต่อ</td></tr>
+  <tr><td><b>Sales / Deals</b></td><td>ใบเสนอราคา, ใบจอง, สัญญาซื้อขาย</td></tr>
+  <tr><td><b>Finance</b></td><td>การยื่นไฟแนนซ์, การชำระเงิน, มัดจำ</td></tr>
+  <tr><td><b>Documents</b></td><td>เล่มทะเบียน, สัญญา, ใบเสร็จ (ไฟล์แนบ), การโอนกรรมสิทธิ์</td></tr>
+  <tr><td><b>Reports</b></td><td>กำไรขาดทุนต่อคัน, อายุสต็อก, ยอดขายรายเซลล์, ค่าซ่อมเฉลี่ย</td></tr>
+  <tr><td><b>Settings / Users</b></td><td>สิทธิ์ผู้ใช้, สาขา, master data (ยี่ห้อ/รุ่น, บริษัทไฟแนนซ์)</td></tr>
+</table>
+
+<h3>สิทธิ์การเข้าถึง (RBAC)</h3>
+<table>
+  <tr><th>โมดูล</th><th>Owner</th><th>จัดซื้อ</th><th>ช่าง</th><th>เซลล์</th><th>บัญชี</th></tr>
+  <tr><td>ดูต้นทุน / กำไร</td><td>✔</td><td>✔</td><td>–</td><td>✘ (เห็นแค่ราคาขั้นต่ำ)</td><td>✔</td></tr>
+  <tr><td>รับซื้อรถ</td><td>✔</td><td>✔</td><td>–</td><td>–</td><td>ดู</td></tr>
+  <tr><td>ใบสั่งซ่อม</td><td>✔ อนุมัติ</td><td>ดู</td><td>✔</td><td>–</td><td>ดู</td></tr>
+  <tr><td>ขาย / จอง</td><td>✔</td><td>–</td><td>–</td><td>✔</td><td>ดู</td></tr>
+  <tr><td>รับเงิน / ไฟแนนซ์</td><td>✔</td><td>–</td><td>–</td><td>ยื่นเรื่อง</td><td>✔</td></tr>
+  <tr><td>ตั้งค่า / ผู้ใช้</td><td>✔</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+<h3>KPI ที่ควรมีบน Dashboard</h3>
+<ul>
+  <li><b>Days in Stock:</b> อายุสต็อกเฉลี่ย และรถที่ค้างเกิน 60 / 90 วัน</li>
+  <li><b>Recon Cycle Time:</b> จำนวนวันตั้งแต่รถเข้าลานจนพร้อมขาย</li>
+  <li><b>Gross Profit:</b> กำไรเฉลี่ยต่อคัน และกำไรรวมรายเดือน</li>
+  <li><b>Recon Cost %:</b> ค่าซ่อมเทียบกับราคาซื้อ</li>
+  <li><b>Finance Approval Rate:</b> อัตราอนุมัติแยกตามบริษัทไฟแนนซ์</li>
+  <li><b>Lead Conversion:</b> อัตรา Lead → จอง → ขาย แยกตามเซลล์และช่องทาง</li>
+</ul>
+
+<!-- ============ 8 ============ -->
+<h2 class="pb">8. Data Model (ER Diagram)</h2>
+<figure>
+<svg viewBox="0 0 690 560" xmlns="http://www.w3.org/2000/svg">
+  <!-- relationships first (behind boxes) -->
+  <g stroke="#64748b" stroke-width="1.3" fill="none">
+    <line x1="163" y1="60" x2="180" y2="150"/>
+    <line x1="163" y1="160" x2="180" y2="180"/>
+    <line x1="85" y1="200" x2="85" y2="220"/>
+    <line x1="163" y1="360" x2="180" y2="270"/>
+    <line x1="163" y1="460" x2="180" y2="285"/>
+    <line x1="257" y1="100" x2="257" y2="130"/>
+    <line x1="257" y1="295" x2="257" y2="345"/>
+    <line x1="335" y1="150" x2="352" y2="70"/>
+    <line x1="335" y1="220" x2="352" y2="220"/>
+    <line x1="507" y1="60" x2="524" y2="60"/>
+    <line x1="600" y1="115" x2="600" y2="135"/>
+    <line x1="507" y1="95" x2="524" y2="245"/>
+    <line x1="507" y1="240" x2="524" y2="330"/>
+    <line x1="430" y1="275" x2="430" y2="315"/>
+    <path d="M352,262 H344 V470 H352"/>
+    <line x1="507" y1="500" x2="524" y2="525"/>
+    <line x1="600" y1="380" x2="600" y2="400"/>
+  </g>
+  <g font-size="10.5">
+    <!-- generic box: header + fields -->
+    <!-- col0 -->
+    <g transform="translate(8,20)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#3b6fd8"/><rect width="155" height="22" rx="5" fill="#3b6fd8"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">purchases</text>
+      <text x="8" y="38">vehicle_id (1:1)</text><text x="8" y="53">seller_name</text><text x="8" y="68">purchase_price</text></g>
+    <g transform="translate(8,120)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#3b6fd8"/><rect width="155" height="22" rx="5" fill="#3b6fd8"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">inspections</text>
+      <text x="8" y="38">vehicle_id</text><text x="8" y="53">inspected_at</text><text x="8" y="68">result</text></g>
+    <g transform="translate(8,220)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#3b6fd8"/><rect width="155" height="22" rx="5" fill="#3b6fd8"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">inspection_items</text>
+      <text x="8" y="38">inspection_id</text><text x="8" y="53">check_point</text><text x="8" y="68">status · photo_url</text></g>
+    <g transform="translate(8,320)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#d99a1e"/><rect width="155" height="22" rx="5" fill="#d99a1e"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">expenses</text>
+      <text x="8" y="38">vehicle_id</text><text x="8" y="53">category</text><text x="8" y="68">amount · receipt_url</text></g>
+    <g transform="translate(8,420)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#64748b"/><rect width="155" height="22" rx="5" fill="#64748b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">documents / photos</text>
+      <text x="8" y="38">vehicle_id</text><text x="8" y="53">doc_type</text><text x="8" y="68">file_url</text></g>
+    <!-- col1 -->
+    <g transform="translate(180,20)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#64748b"/><rect width="155" height="22" rx="5" fill="#64748b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">vehicle_status_logs</text>
+      <text x="8" y="38">vehicle_id</text><text x="8" y="53">from_status → to_status</text><text x="8" y="68">changed_by · changed_at</text></g>
+    <g transform="translate(180,130)"><rect width="155" height="165" rx="5" fill="#eef4ff" stroke="#1d4ed8" stroke-width="2"/><rect width="155" height="24" rx="5" fill="#1d4ed8"/>
+      <text x="8" y="16" fill="#fff" font-weight="700" font-size="12">vehicles</text>
+      <text x="8" y="40" font-weight="700">id (PK)</text><text x="8" y="55">stock_no</text><text x="8" y="70">vin · engine_no · plate_no</text>
+      <text x="8" y="85">make · model · year · color</text><text x="8" y="100">mileage · gear · fuel</text>
+      <text x="8" y="115" font-weight="700">status</text><text x="8" y="130">total_cost</text><text x="8" y="145">asking_price · min_price</text></g>
+    <g transform="translate(180,345)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">title_transfers</text>
+      <text x="8" y="38">vehicle_id · deal_id</text><text x="8" y="53">submitted_at</text><text x="8" y="68">status</text></g>
+    <!-- col2 -->
+    <g transform="translate(352,20)"><rect width="155" height="95" rx="5" fill="#fff" stroke="#d99a1e"/><rect width="155" height="22" rx="5" fill="#d99a1e"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">work_orders</text>
+      <text x="8" y="38">vehicle_id</text><text x="8" y="53">vendor_id</text><text x="8" y="68">status</text><text x="8" y="83">budget · actual_cost</text></g>
+    <g transform="translate(352,165)"><rect width="155" height="110" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">deals</text>
+      <text x="8" y="38">vehicle_id</text><text x="8" y="53">customer_id · salesperson_id</text><text x="8" y="68">sale_price · discount</text>
+      <text x="8" y="83">payment_type (cash/finance)</text><text x="8" y="98">status</text></g>
+    <g transform="translate(352,315)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">payments</text>
+      <text x="8" y="38">deal_id</text><text x="8" y="53">type (มัดจำ/ดาวน์/ยอดจัด)</text><text x="8" y="68">amount · paid_at</text></g>
+    <g transform="translate(352,425)"><rect width="155" height="95" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">finance_applications</text>
+      <text x="8" y="38">deal_id · finance_co_id</text><text x="8" y="53">loan_amount · down</text><text x="8" y="68">rate · term · installment</text><text x="8" y="83">status</text></g>
+    <!-- col3 -->
+    <g transform="translate(524,20)"><rect width="155" height="95" rx="5" fill="#fff" stroke="#d99a1e"/><rect width="155" height="22" rx="5" fill="#d99a1e"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">work_order_items</text>
+      <text x="8" y="38">work_order_id</text><text x="8" y="53">item_type (labor/part/sublet)</text><text x="8" y="68">part_id · qty · unit_cost</text><text x="8" y="83">total</text></g>
+    <g transform="translate(524,135)"><rect width="155" height="65" rx="5" fill="#fff" stroke="#d99a1e"/><rect width="155" height="22" rx="5" fill="#d99a1e"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">parts</text>
+      <text x="8" y="38">part_no · name</text><text x="8" y="53">default_price</text></g>
+    <g transform="translate(524,215)"><rect width="155" height="65" rx="5" fill="#fff" stroke="#d99a1e"/><rect width="155" height="22" rx="5" fill="#d99a1e"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">vendors</text>
+      <text x="8" y="38">name · type (อู่/ร้านอะไหล่)</text><text x="8" y="53">phone · tax_id</text></g>
+    <g transform="translate(524,300)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">customers</text>
+      <text x="8" y="38">name · id_card</text><text x="8" y="53">phone · line_id</text><text x="8" y="68">address</text></g>
+    <g transform="translate(524,400)"><rect width="155" height="80" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">leads</text>
+      <text x="8" y="38">customer_id</text><text x="8" y="53">vehicle_id (สนใจ)</text><text x="8" y="68">source · status</text></g>
+    <g transform="translate(524,500)"><rect width="155" height="50" rx="5" fill="#fff" stroke="#2e9d5b"/><rect width="155" height="22" rx="5" fill="#2e9d5b"/>
+      <text x="8" y="15" fill="#fff" font-weight="700">finance_companies</text>
+      <text x="8" y="38">name · commission_rate</text></g>
+  </g>
+</svg>
+<figcaption>รูปที่ 6: ตารางหลัก · เส้นเชื่อมแทนความสัมพันธ์แบบ 1:N (purchases เป็น 1:1) · สีบอกกลุ่ม: น้ำเงิน = จัดหา, ส้ม = ซ่อม/ต้นทุน, เขียว = ขาย · ทุกตารางมี id, created_at, updated_at, branch_id</figcaption>
+</figure>
+
+<!-- ============ 9 ============ -->
+<h2>9. สถาปัตยกรรมระบบ (แนะนำ)</h2>
+<figure>
+<svg viewBox="0 0 690 215" xmlns="http://www.w3.org/2000/svg">
+  <g text-anchor="middle" font-size="11">
+    <rect x="10" y="30" width="140" height="56" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+    <text x="80" y="54" font-weight="700">ผู้ใช้ภายใน</text><text x="80" y="72" font-size="9.5" fill="#475569">Owner · เซลล์ · ช่าง · บัญชี</text>
+    <rect x="10" y="130" width="140" height="56" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+    <text x="80" y="154" font-weight="700">ลูกค้าทั่วไป</text><text x="80" y="172" font-size="9.5" fill="#475569">มือถือ / เว็บ</text>
+    <rect x="200" y="30" width="160" height="56" rx="8" fill="#e0ecff" stroke="#3b6fd8"/>
+    <text x="280" y="54" font-weight="700">Back-office Web App</text><text x="280" y="72" font-size="9.5" fill="#475569">React + Vite (โปรเจกต์นี้)</text>
+    <rect x="200" y="130" width="160" height="56" rx="8" fill="#e0ecff" stroke="#3b6fd8"/>
+    <text x="280" y="154" font-weight="700">หน้าเว็บโชว์รถ</text><text x="280" y="172" font-size="9.5" fill="#475569">Public Showroom (เฟส 3)</text>
+    <rect x="410" y="55" width="120" height="106" rx="8" fill="#fff1d6" stroke="#d99a1e"/>
+    <text x="470" y="95" font-weight="700">Backend API</text><text x="470" y="113" font-size="9.5" fill="#475569">REST · Auth</text><text x="470" y="128" font-size="9.5" fill="#475569">RBAC · Audit log</text>
+    <rect x="570" y="20" width="110" height="50" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="625" y="41" font-weight="700">Database</text><text x="625" y="57" font-size="9.5" fill="#475569">PostgreSQL</text>
+    <rect x="570" y="85" width="110" height="50" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="625" y="106" font-weight="700">File Storage</text><text x="625" y="122" font-size="9.5" fill="#475569">รูปรถ · เอกสาร</text>
+    <rect x="570" y="150" width="110" height="50" rx="8" fill="#ddf4e4" stroke="#2e9d5b"/>
+    <text x="625" y="171" font-weight="700">Integrations</text><text x="625" y="187" font-size="9.5" fill="#475569">PDF · LINE แจ้งเตือน</text>
+  </g>
+  <g stroke="#475569" stroke-width="1.5" fill="none" marker-end="url(#arr)">
+    <line x1="150" y1="58" x2="198" y2="58"/><line x1="150" y1="158" x2="198" y2="158"/>
+    <line x1="360" y1="58" x2="408" y2="85"/><line x1="360" y1="158" x2="408" y2="135"/>
+    <line x1="530" y1="88" x2="568" y2="48"/><line x1="530" y1="108" x2="568" y2="110"/><line x1="530" y1="130" x2="568" y2="172"/>
+  </g>
+</svg>
+<figcaption>รูปที่ 7: โครงสร้างระบบโดยรวม ส่วน frontend ใช้โปรเจกต์ React + Vite ที่มีอยู่แล้ว</figcaption>
+</figure>
+
+<!-- ============ 10 ============ -->
+<h2>10. แผนพัฒนาเป็นเฟส</h2>
+<table>
+  <tr><th style="width:14%">เฟส</th><th>ขอบเขต</th><th style="width:30%">ผลลัพธ์</th></tr>
+  <tr><td><b>1. MVP</b></td><td>Inventory, Purchase, ใบสั่งซ่อมและอะไหล่, Expenses, ต้นทุนและกำไรต่อคัน, Dashboard, ผู้ใช้และสิทธิ์</td><td>รู้ว่ารถแต่ละคันลงทุนไปเท่าไร และขายแล้วได้กำไรเท่าไร</td></tr>
+  <tr><td><b>2. ขาย</b></td><td>Sales/Deal, CRM/Leads, ไฟแนนซ์, การชำระเงิน, ออกเอกสาร PDF (ใบเสนอราคา, ใบจอง, สัญญา)</td><td>ปิดการขายได้ครบวงจรในระบบ</td></tr>
+  <tr><td><b>3. ขยาย</b></td><td>Inspection checklist, หน้าเว็บโชว์รถสำหรับลูกค้า, รายงานขั้นสูง, หลายสาขา, แจ้งเตือนทาง LINE</td><td>ใช้งานได้ระดับองค์กร และเพิ่มช่องทางขาย</td></tr>
+</table>
+
+</body>
+</html>

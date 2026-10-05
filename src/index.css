@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+
+/* Apple-inspired design tokens. Values swap for dark mode; Tailwind utilities
+   (bg-surface, text-ink-2, ...) read them through @theme inline below. */
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fbfbfd;
+  --fill: rgba(0, 0, 0, 0.04);
+  --fill-strong: rgba(0, 0, 0, 0.08);
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --text-3: #86868b;
+  --line: rgba(0, 0, 0, 0.1);
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --link: #0066cc;
+  --nav: rgba(251, 251, 253, 0.8);
+  --seg-on: #ffffff;
+  --overlay: rgba(0, 0, 0, 0.32);
+  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  --lift-shadow: 0 12px 40px rgba(0, 0, 0, 0.09);
+
+  --tone-gray: #6e6e73;   --tone-gray-soft: rgba(110, 110, 115, 0.12);
+  --tone-blue: #0066cc;   --tone-blue-soft: rgba(0, 113, 227, 0.1);
+  --tone-orange: #b64400; --tone-orange-soft: rgba(255, 149, 0, 0.15);
+  --tone-green: #1b7d34;  --tone-green-soft: rgba(52, 199, 89, 0.15);
+  --tone-purple: #8944ab; --tone-purple-soft: rgba(175, 82, 222, 0.12);
+  --tone-ink: #1d1d1f;    --tone-ink-soft: rgba(0, 0, 0, 0.07);
+  --tone-red: #d70015;    --tone-red-soft: rgba(255, 59, 48, 0.12);
+
+  /* chart series: validated categorical order, slots 1-4 */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --fill: rgba(255, 255, 255, 0.06);
+    --fill-strong: rgba(255, 255, 255, 0.12);
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --text-3: #8e8e93;
+    --line: rgba(255, 255, 255, 0.12);
+    --accent: #0a84ff;
+    --accent-hover: #409cff;
+    --link: #2997ff;
+    --nav: rgba(22, 22, 23, 0.8);
+    --seg-on: #636366;
+    --overlay: rgba(0, 0, 0, 0.6);
+    --card-shadow: none;
+    --lift-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+    --tone-gray: #a1a1a6;   --tone-gray-soft: rgba(161, 161, 166, 0.16);
+    --tone-blue: #64b5ff;   --tone-blue-soft: rgba(10, 132, 255, 0.2);
+    --tone-orange: #ffb340; --tone-orange-soft: rgba(255, 159, 10, 0.18);
+    --tone-green: #4cd964;  --tone-green-soft: rgba(48, 209, 88, 0.18);
+    --tone-purple: #d78cff; --tone-purple-soft: rgba(191, 90, 242, 0.2);
+    --tone-ink: #f5f5f7;    --tone-ink-soft: rgba(255, 255, 255, 0.12);
+    --tone-red: #ff6961;    --tone-red-soft: rgba(255, 69, 58, 0.18);
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Noto Sans Thai', 'Helvetica Neue',
+    'Leelawadee UI', sans-serif;
+
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fill: var(--fill);
+  --color-fill-strong: var(--fill-strong);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-ink-3: var(--text-3);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-link: var(--link);
+  --color-nav: var(--nav);
+  --color-seg-on: var(--seg-on);
+  --color-overlay: var(--overlay);
+
+  --color-tone-gray: var(--tone-gray);     --color-tone-gray-soft: var(--tone-gray-soft);
+  --color-tone-blue: var(--tone-blue);     --color-tone-blue-soft: var(--tone-blue-soft);
+  --color-tone-orange: var(--tone-orange); --color-tone-orange-soft: var(--tone-orange-soft);
+  --color-tone-green: var(--tone-green);   --color-tone-green-soft: var(--tone-green-soft);
+  --color-tone-purple: var(--tone-purple); --color-tone-purple-soft: var(--tone-purple-soft);
+  --color-tone-ink: var(--tone-ink);       --color-tone-ink-soft: var(--tone-ink-soft);
+  --color-tone-red: var(--tone-red);       --color-tone-red-soft: var(--tone-red-soft);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+
+  --shadow-card: var(--card-shadow);
+  --shadow-lift: var(--lift-shadow);
+
+  --radius-card: 18px;
+  --radius-panel: 22px;
+
+  --animate-fade: fade 0.2s ease;
+  --animate-rise: rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+}
+
+@layer base {
+  html {
+    font-size: 15px;
+  }
+  body {
+    @apply min-h-screen bg-canvas font-sans leading-normal text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a {
+    @apply text-link;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
