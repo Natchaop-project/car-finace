@@ -8,9 +8,12 @@ import VehicleNew from './pages/VehicleNew'
 import WorkOrders from './pages/WorkOrders'
 import { StoreProvider } from './store'
 
+// '/' locally, '/car-finace' on GitHub Pages.
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <StoreProvider>
         <Routes>
           <Route element={<AppLayout />}>
