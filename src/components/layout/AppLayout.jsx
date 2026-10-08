@@ -11,6 +11,18 @@ export default function AppLayout() {
     window.scrollTo(0, 0)
   }, [pathname])
 
+  // Home is a full-bleed 3D scene: no page padding, no footer.
+  if (pathname === '/') {
+    return (
+      <>
+        <NavBar />
+        <main>
+          <Outlet />
+        </main>
+      </>
+    )
+  }
+
   return (
     <>
       <NavBar />
