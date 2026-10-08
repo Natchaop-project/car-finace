@@ -3,6 +3,7 @@ import { Button, Icon, cx } from '../ui'
 
 const LINKS = [
   { to: '/', label: 'ภาพรวม', end: true },
+  { to: '/dashboard', label: 'แดชบอร์ด' },
   { to: '/vehicles', label: 'สต็อกรถ' },
   { to: '/work-orders', label: 'งานซ่อม' },
 ]

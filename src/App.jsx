@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router'
 import AppLayout from './components/layout/AppLayout'
 import { Empty } from './components/ui'
 import Dashboard from './pages/Dashboard'
+import Factory from './pages/Factory'
 import Inventory from './pages/Inventory'
 import VehicleDetail from './pages/VehicleDetail'
 import VehicleNew from './pages/VehicleNew'
@@ -17,7 +18,8 @@ export default function App() {
       <StoreProvider>
         <Routes>
           <Route element={<AppLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Factory />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="vehicles" element={<Inventory />} />
             <Route path="vehicles/new" element={<VehicleNew />} />
             <Route path="vehicles/:id" element={<VehicleDetail />} />
